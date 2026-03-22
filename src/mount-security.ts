@@ -33,7 +33,7 @@ const DEFAULT_BLOCKED_PATTERNS = [
   '.aws',
   '.azure',
   '.gcloud',
-  '.kube',
+  // .kube intentionally NOT blocked — kubeconfig mounts are a supported capability
   '.docker',
   'credentials',
   '.env',

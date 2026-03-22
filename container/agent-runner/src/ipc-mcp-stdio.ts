@@ -19,6 +19,7 @@ const TASKS_DIR = path.join(IPC_DIR, 'tasks');
 const chatJid = process.env.NANOCLAW_CHAT_JID!;
 const groupFolder = process.env.NANOCLAW_GROUP_FOLDER!;
 const isMain = process.env.NANOCLAW_IS_MAIN === '1';
+const triggerMessageId = process.env.NANOCLAW_TRIGGER_MESSAGE_ID || '';
 
 function writeIpcFile(dir: string, data: object): string {
   fs.mkdirSync(dir, { recursive: true });
@@ -59,6 +60,36 @@ server.tool(
     writeIpcFile(MESSAGES_DIR, data);
 
     return { content: [{ type: 'text' as const, text: 'Message sent.' }] };
+  },
+);
+
+server.tool(
+  'react_to_message',
+  "Add an emoji reaction to the message that triggered this agent run. Use this to acknowledge you've seen a message before starting longer work — less noisy than sending a full message. Defaults to reacting to the trigger message.",
+  {
+    emoji: z.string().default('👍').describe('The emoji to react with (e.g. "👍", "👀", "🌊")'),
+    message_id: z.string().optional().describe('The message ID to react to. Defaults to the trigger message.'),
+  },
+  async (args) => {
+    const msgId = args.message_id || triggerMessageId;
+    if (!msgId) {
+      return {
+        content: [{ type: 'text' as const, text: 'No trigger message ID available to react to.' }],
+        isError: true,
+      };
+    }
+
+    const data = {
+      type: 'reaction',
+      chatJid,
+      messageId: msgId,
+      emoji: args.emoji || '👍',
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    };
+
+    writeIpcFile(MESSAGES_DIR, data);
+    return { content: [{ type: 'text' as const, text: `Reaction ${args.emoji || '👍'} queued.` }] };
   },
 );
 

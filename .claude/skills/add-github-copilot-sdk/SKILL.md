@@ -1,3 +1,8 @@
+---
+name: add-github-copilot-sdk
+description: Switch NanoClaw from Claude Agent SDK to GitHub Copilot SDK. Use when the user wants to use the GitHub Copilot SDK as the agent backend instead of the Claude Agent SDK.
+---
+
 # Add GitHub Copilot SDK
 
 Switch NanoClaw from Claude Agent SDK to GitHub Copilot SDK.

@@ -6,6 +6,7 @@ import {
   CREDENTIAL_PROXY_PORT,
   IDLE_TIMEOUT,
   POLL_INTERVAL,
+  TELEGRAM_BOT_POOL,
   TIMEZONE,
   TRIGGER_PATTERN,
 } from './config.js';
@@ -15,6 +16,7 @@ import {
   getChannelFactory,
   getRegisteredChannelNames,
 } from './channels/registry.js';
+import { initBotPool } from './channels/telegram.js';
 import {
   ContainerOutput,
   runContainerAgent,
@@ -179,6 +181,15 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     if (!hasTrigger) return true;
   }
 
+  // Find the most recent trigger message ID for reaction acknowledgment
+  const allowlistCfg = loadSenderAllowlist();
+  const triggerMessage = [...missedMessages].reverse().find(
+    (m) =>
+      TRIGGER_PATTERN.test(m.content.trim()) &&
+      (m.is_from_me || isTriggerAllowed(chatJid, m.sender, allowlistCfg)),
+  ) ?? missedMessages[missedMessages.length - 1];
+  const triggerMessageId = triggerMessage?.id;
+
   const prompt = formatMessages(missedMessages, TIMEZONE);
 
   // Advance cursor so the piping path in startMessageLoop won't re-fetch
@@ -211,7 +222,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   let hadError = false;
   let outputSentToUser = false;
 
-  const output = await runAgent(group, prompt, chatJid, async (result) => {
+  const output = await runAgent(group, prompt, chatJid, triggerMessageId, async (result) => {
     // Streaming output callback — called for each agent result
     if (result.result) {
       const raw =
@@ -268,6 +279,7 @@ async function runAgent(
   group: RegisteredGroup,
   prompt: string,
   chatJid: string,
+  triggerMessageId: string | undefined,
   onOutput?: (output: ContainerOutput) => Promise<void>,
 ): Promise<'success' | 'error'> {
   const isMain = group.isMain === true;
@@ -317,8 +329,8 @@ async function runAgent(
         sessionId,
         groupFolder: group.folder,
         chatJid,
+        triggerMessageId,
         isMain,
-        assistantName: ASSISTANT_NAME,
       },
       (proc, containerName) =>
         queue.registerProcess(chatJid, proc, containerName, group.folder),
@@ -596,6 +608,10 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  if (TELEGRAM_BOT_POOL.length > 0) {
+    await initBotPool(TELEGRAM_BOT_POOL);
+  }
+
   // Start subsystems (independently of connection handler)
   startSchedulerLoop({
     registeredGroups: () => registeredGroups,
@@ -618,6 +634,15 @@ async function main(): Promise<void> {
       const channel = findChannel(channels, jid);
       if (!channel) throw new Error(`No channel for JID: ${jid}`);
       return channel.sendMessage(jid, text);
+    },
+    reactToMessage: (jid, messageId, emoji) => {
+      const channel = findChannel(channels, jid);
+      if (!channel) throw new Error(`No channel for JID: ${jid}`);
+      if (!channel.reactToMessage) {
+        logger.debug({ jid }, 'Channel does not support reactions');
+        return Promise.resolve();
+      }
+      return channel.reactToMessage(jid, messageId, emoji);
     },
     registeredGroups: () => registeredGroups,
     registerGroup,
