@@ -177,7 +177,12 @@ function buildVolumeMounts(
  * Secrets are never written to disk or mounted as files.
  */
 function readSecrets(): Record<string, string> {
-  return readEnvFile(['GITHUB_TOKEN', 'GH_TOKEN', 'TAVILY_API_KEY', 'INFSH_API_KEY']);
+  return readEnvFile([
+    'GITHUB_TOKEN',
+    'GH_TOKEN',
+    'TAVILY_API_KEY',
+    'INFSH_API_KEY',
+  ]);
 }
 
 function buildContainerArgs(

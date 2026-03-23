@@ -44,7 +44,8 @@ async function sendTelegramMessage(
 export class TelegramChannel implements Channel {
   name = 'telegram';
 
-  private bot: Bot | null = null;  private opts: TelegramChannelOpts;
+  private bot: Bot | null = null;
+  private opts: TelegramChannelOpts;
   private botToken: string;
 
   constructor(botToken: string, opts: TelegramChannelOpts) {
@@ -290,7 +291,11 @@ export class TelegramChannel implements Channel {
     }
   }
 
-  async reactToMessage(jid: string, messageId: string, emoji: string): Promise<void> {
+  async reactToMessage(
+    jid: string,
+    messageId: string,
+    emoji: string,
+  ): Promise<void> {
     if (!this.bot) return;
     try {
       const numericId = jid.replace(/^tg:/, '');
@@ -301,7 +306,10 @@ export class TelegramChannel implements Channel {
       );
       logger.info({ jid, messageId, emoji }, 'Telegram reaction sent');
     } catch (err) {
-      logger.debug({ jid, messageId, emoji, err }, 'Failed to send Telegram reaction');
+      logger.debug(
+        { jid, messageId, emoji, err },
+        'Failed to send Telegram reaction',
+      );
     }
   }
 }
@@ -372,9 +380,15 @@ export async function sendPoolMessage(
     try {
       await poolApis[idx].setMyName(sender);
       await new Promise((r) => setTimeout(r, 2000));
-      logger.info({ sender, groupFolder, poolIndex: idx }, 'Assigned and renamed pool bot');
+      logger.info(
+        { sender, groupFolder, poolIndex: idx },
+        'Assigned and renamed pool bot',
+      );
     } catch (err) {
-      logger.warn({ sender, err }, 'Failed to rename pool bot (sending anyway)');
+      logger.warn(
+        { sender, err },
+        'Failed to rename pool bot (sending anyway)',
+      );
     }
   }
 
@@ -389,7 +403,10 @@ export async function sendPoolMessage(
         await api.sendMessage(numericId, text.slice(i, i + MAX_LENGTH));
       }
     }
-    logger.info({ chatId, sender, poolIndex: idx, length: text.length }, 'Pool message sent');
+    logger.info(
+      { chatId, sender, poolIndex: idx, length: text.length },
+      'Pool message sent',
+    );
   } catch (err) {
     logger.error({ chatId, sender, err }, 'Failed to send pool message');
   }
